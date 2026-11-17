@@ -21,7 +21,10 @@
         </form>
         <p id="quiz-status" role="status"></p>
         <section id="question-panel" aria-labelledby="question-title" hidden>
-            <p id="progress"></p>
+            <div class="question-meta">
+                <p id="progress"></p>
+                <p role="timer">Temps restant <strong id="time-left">10 s</strong></p>
+            </div>
             <h2 id="question-title" tabindex="-1"></h2>
             <ul id="answers"></ul>
             <button id="next-question" type="button" hidden>Suivant</button>

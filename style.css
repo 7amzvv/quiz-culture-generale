@@ -70,8 +70,23 @@ button:disabled {
 }
 
 #progress {
-    margin-bottom: 0.25rem;
     color: #4a584d;
+}
+
+.question-meta {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.question-meta p {
+    margin: 0;
+}
+
+#time-left {
+    font-variant-numeric: tabular-nums;
 }
 
 #question-title {

@@ -5,6 +5,7 @@ const statusMessage = document.querySelector("#quiz-status");
 const questionPanel = document.querySelector("#question-panel");
 const questionTitle = document.querySelector("#question-title");
 const progress = document.querySelector("#progress");
+const timeLeft = document.querySelector("#time-left");
 const answersList = document.querySelector("#answers");
 const next = document.querySelector("#next-question");
 const resultPanel = document.querySelector("#result-panel");
@@ -15,6 +16,9 @@ let questions = [];
 let choices = [];
 let currentIndex = 0;
 let selectedAnswer = null;
+const questionDurationMs = 10_000;
+let deadline = 0;
+let timerId;
 
 class QuestionLoadError extends Error {}
 
@@ -51,7 +55,13 @@ next.addEventListener("click", () => {
         return;
     }
 
-    choices.push(selectedAnswer);
+    completeQuestion(performance.now() < deadline ? selectedAnswer : null);
+});
+
+function completeQuestion(answer) {
+    clearInterval(timerId);
+    choices.push(answer);
+    statusMessage.textContent = answer === null ? "Temps écoulé. Question ignorée." : "";
     currentIndex++;
     if (currentIndex < questions.length) {
         showQuestion();
@@ -59,7 +69,7 @@ next.addEventListener("click", () => {
     }
 
     showResults();
-});
+}
 
 replay.addEventListener("click", () => {
     resultPanel.hidden = true;
@@ -93,11 +103,27 @@ function showQuestion() {
         answersList.append(item);
     }
     questionPanel.hidden = false;
+    deadline = performance.now() + questionDurationMs;
+    timeLeft.textContent = "10 s";
+    timerId = setInterval(updateTimer, 100);
     questionTitle.focus();
 }
 
+function updateTimer() {
+    const remaining = deadline - performance.now();
+    if (remaining <= 0) {
+        completeQuestion(null);
+        return;
+    }
+
+    const seconds = `${Math.ceil(remaining / 1000)} s`;
+    if (timeLeft.textContent !== seconds) {
+        timeLeft.textContent = seconds;
+    }
+}
+
 function chooseAnswer(answer, button) {
-    if (questionPanel.hidden) {
+    if (questionPanel.hidden || performance.now() >= deadline) {
         return;
     }
 
@@ -120,7 +146,9 @@ function showResults() {
         const choice = document.createElement("div");
         const correct = document.createElement("div");
         title.textContent = decodeText(question.question);
-        choice.textContent = `Ta réponse : ${decodeText(choices[index])}`;
+        choice.textContent = choices[index] === null
+            ? "Question ignorée (temps écoulé)."
+            : `Ta réponse : ${decodeText(choices[index])}`;
         correct.textContent = `Bonne réponse : ${decodeText(question.correct_answer)}`;
         item.append(title, choice, correct);
         corrections.append(item);
