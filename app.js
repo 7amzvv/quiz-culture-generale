@@ -31,7 +31,7 @@ form.addEventListener("submit", async (event) => {
 
 function showQuestion(question, index, total) {
     progress.textContent = `Question ${index + 1} sur ${total}`;
-    questionTitle.textContent = question.question;
+    questionTitle.textContent = decodeText(question.question);
     answersList.replaceChildren();
 
     const answers = [question.correct_answer, ...question.incorrect_answers];
@@ -44,11 +44,17 @@ function showQuestion(question, index, total) {
         const item = document.createElement("li");
         const button = document.createElement("button");
         button.type = "button";
-        button.textContent = answer;
+        button.textContent = decodeText(answer);
         item.append(button);
         answersList.append(item);
     }
     questionPanel.hidden = false;
+}
+
+function decodeText(text) {
+    const decoder = document.createElement("textarea");
+    decoder.innerHTML = text;
+    return decoder.value;
 }
 
 async function fetchQuestions(categoryId) {
