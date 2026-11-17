@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Quiz de culture générale</title>
+    <script src="app.js" defer></script>
 </head>
 <body>
     <main>
@@ -15,8 +16,9 @@
                 <option value="17">Sciences et nature</option>
                 <option value="22">Géographie</option>
             </select>
-            <button type="submit" disabled>Commencer</button>
+            <button type="submit">Commencer</button>
         </form>
+        <p id="quiz-status" role="status"></p>
         <section id="question-panel" aria-labelledby="question-title" hidden>
             <p id="progress"></p>
             <h2 id="question-title"></h2>
