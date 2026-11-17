@@ -10,6 +10,7 @@ form.addEventListener("submit", async (event) => {
     }
 
     start.disabled = true;
+    category.disabled = true;
     statusMessage.textContent = "Chargement des questions…";
     try {
         const questions = await fetchQuestions(category.value);
@@ -17,6 +18,7 @@ form.addEventListener("submit", async (event) => {
     } catch {
         statusMessage.textContent = "Impossible de charger les questions. Réessaie dans un instant.";
     } finally {
+        category.disabled = false;
         start.disabled = false;
     }
 });
@@ -30,5 +32,18 @@ async function fetchQuestions(categoryId) {
     }
 
     const data = await response.json();
+    if (data.response_code !== 0 || !Array.isArray(data.results) || data.results.length !== 5
+        || !data.results.every(isMultipleChoiceQuestion)) {
+        throw new Error("Le service n’a pas fourni cinq questions valides.");
+    }
     return data.results;
+}
+
+function isMultipleChoiceQuestion(question) {
+    return question?.type === "multiple"
+        && typeof question.question === "string"
+        && typeof question.correct_answer === "string"
+        && Array.isArray(question.incorrect_answers)
+        && question.incorrect_answers.length === 3
+        && question.incorrect_answers.every((answer) => typeof answer === "string");
 }
