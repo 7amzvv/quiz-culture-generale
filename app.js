@@ -1,4 +1,5 @@
 const form = document.querySelector("#quiz-form");
+const language = document.querySelector("#language");
 const category = document.querySelector("#category");
 const start = form.querySelector("button");
 const statusMessage = document.querySelector("#quiz-status");
@@ -17,6 +18,7 @@ let choices = [];
 let currentIndex = 0;
 let selectedAnswer = null;
 const questionDurationMs = 10_000;
+const frenchCategories = { "9": "culture_generale", "17": "science", "22": "geographie" };
 let deadline = 0;
 let timerId;
 
@@ -24,19 +26,22 @@ class QuestionLoadError extends Error {}
 
 form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    if (start.disabled) {
+    if (start.disabled || form.hidden) {
         return;
     }
 
     start.disabled = true;
+    language.disabled = true;
     category.disabled = true;
     questionPanel.hidden = true;
     resultPanel.hidden = true;
     statusMessage.textContent = "Chargement des questions…";
     try {
-        questions = await fetchQuestions(category.value);
+        questions = await fetchQuestions(category.value, language.value);
         choices = [];
         currentIndex = 0;
+        questionTitle.lang = language.value;
+        answersList.lang = language.value;
         form.hidden = true;
         showQuestion();
         statusMessage.textContent = "";
@@ -45,6 +50,7 @@ form.addEventListener("submit", async (event) => {
             ? error.message
             : "Impossible de charger les questions. Réessaie dans un instant.";
     } finally {
+        language.disabled = false;
         category.disabled = false;
         start.disabled = false;
     }
@@ -74,13 +80,13 @@ function completeQuestion(answer) {
 replay.addEventListener("click", () => {
     resultPanel.hidden = true;
     form.hidden = false;
-    category.focus();
+    language.focus();
 });
 
 function showQuestion() {
     const question = questions[currentIndex];
     progress.textContent = `Question ${currentIndex + 1} sur ${questions.length}`;
-    questionTitle.textContent = decodeText(question.question);
+    questionTitle.textContent = question.question;
     answersList.replaceChildren();
     selectedAnswer = null;
     next.hidden = true;
@@ -96,7 +102,7 @@ function showQuestion() {
         const item = document.createElement("li");
         const button = document.createElement("button");
         button.type = "button";
-        button.textContent = decodeText(answer);
+        button.textContent = answer;
         button.setAttribute("aria-pressed", "false");
         button.addEventListener("click", () => chooseAnswer(answer, button));
         item.append(button);
@@ -145,11 +151,14 @@ function showResults() {
         const title = document.createElement("strong");
         const choice = document.createElement("div");
         const correct = document.createElement("div");
-        title.textContent = decodeText(question.question);
-        choice.textContent = choices[index] === null
-            ? "Question ignorée (temps écoulé)."
-            : `Ta réponse : ${decodeText(choices[index])}`;
-        correct.textContent = `Bonne réponse : ${decodeText(question.correct_answer)}`;
+        title.lang = questionTitle.lang;
+        title.textContent = question.question;
+        if (choices[index] === null) {
+            choice.textContent = "Question ignorée (temps écoulé).";
+        } else {
+            appendAnswer(choice, "Ta réponse", choices[index]);
+        }
+        appendAnswer(correct, "Bonne réponse", question.correct_answer);
         item.append(title, choice, correct);
         corrections.append(item);
     });
@@ -158,15 +167,25 @@ function showResults() {
     scoreTitle.focus();
 }
 
+function appendAnswer(element, label, value) {
+    const answer = document.createElement("span");
+    answer.lang = questionTitle.lang;
+    answer.textContent = value;
+    element.append(`${label} : `, answer);
+}
+
 function decodeText(text) {
     const decoder = document.createElement("textarea");
     decoder.innerHTML = text;
     return decoder.value;
 }
 
-async function fetchQuestions(categoryId) {
-    const url = new URL("https://opentdb.com/api.php");
-    url.search = new URLSearchParams({ amount: "5", category: categoryId, type: "multiple" });
+async function fetchQuestions(categoryId, questionLanguage) {
+    const french = questionLanguage === "fr";
+    const url = new URL(french ? "https://quizzapi.fr/api/v2/quiz" : "https://opentdb.com/api.php");
+    url.search = new URLSearchParams(french
+        ? { limit: "5", category: frenchCategories[categoryId] }
+        : { amount: "5", category: categoryId, type: "multiple" });
     const response = await fetch(url).catch(() => {
         throw new QuestionLoadError("Connexion au service impossible. Vérifie ta connexion et réessaie.");
     });
@@ -178,17 +197,31 @@ async function fetchQuestions(categoryId) {
     }
 
     const data = await response.json();
-    if (data.response_code === 1) {
+    const results = french ? data?.quizzes : data?.results;
+    if ((!french && data?.response_code === 1)
+        || (french && Array.isArray(results) && results.length < 5)) {
         throw new QuestionLoadError("Pas assez de questions pour cette catégorie. Essaies-en une autre.");
     }
-    if (data.response_code === 5) {
+    if (!french && data?.response_code === 5) {
         throw new QuestionLoadError("Trop de demandes. Attends quelques secondes avant de réessayer.");
     }
-    if (data.response_code !== 0 || !Array.isArray(data.results) || data.results.length !== 5
-        || !data.results.every(isMultipleChoiceQuestion)) {
+    if ((!french && data?.response_code !== 0) || !Array.isArray(results) || results.length !== 5) {
         throw new Error("Le service n’a pas fourni cinq questions valides.");
     }
-    return data.results;
+    const normalized = french ? results.map((question) => ({
+        type: "multiple",
+        question: question?.question,
+        correct_answer: question?.answer,
+        incorrect_answers: question?.badAnswers
+    })) : results;
+    if (!normalized.every(isMultipleChoiceQuestion)) {
+        throw new Error("Le service n’a pas fourni cinq questions valides.");
+    }
+    return french ? normalized : normalized.map((question) => ({
+        question: decodeText(question.question),
+        correct_answer: decodeText(question.correct_answer),
+        incorrect_answers: question.incorrect_answers.map(decodeText)
+    }));
 }
 
 function isMultipleChoiceQuestion(question) {
