@@ -21,9 +21,12 @@
         <p id="quiz-status" role="status"></p>
         <section id="question-panel" aria-labelledby="question-title" hidden>
             <p id="progress"></p>
-            <h2 id="question-title"></h2>
+            <h2 id="question-title" tabindex="-1"></h2>
             <ul id="answers"></ul>
             <button id="next-question" type="button" hidden>Suivant</button>
+        </section>
+        <section id="result-panel" aria-labelledby="score-title" hidden>
+            <h2 id="score-title" tabindex="-1"></h2>
         </section>
     </main>
 </body>

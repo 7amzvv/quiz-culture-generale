@@ -6,6 +6,12 @@ const questionPanel = document.querySelector("#question-panel");
 const questionTitle = document.querySelector("#question-title");
 const progress = document.querySelector("#progress");
 const answersList = document.querySelector("#answers");
+const next = document.querySelector("#next-question");
+const resultPanel = document.querySelector("#result-panel");
+const scoreTitle = document.querySelector("#score-title");
+let questions = [];
+let choices = [];
+let currentIndex = 0;
 
 form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -16,10 +22,13 @@ form.addEventListener("submit", async (event) => {
     start.disabled = true;
     category.disabled = true;
     questionPanel.hidden = true;
+    resultPanel.hidden = true;
     statusMessage.textContent = "Chargement des questions…";
     try {
-        const questions = await fetchQuestions(category.value);
-        showQuestion(questions[0], 0, questions.length);
+        questions = await fetchQuestions(category.value);
+        choices = [];
+        currentIndex = 0;
+        showQuestion();
         statusMessage.textContent = "";
     } catch {
         statusMessage.textContent = "Impossible de charger les questions. Réessaie dans un instant.";
@@ -29,10 +38,30 @@ form.addEventListener("submit", async (event) => {
     }
 });
 
-function showQuestion(question, index, total) {
-    progress.textContent = `Question ${index + 1} sur ${total}`;
+next.addEventListener("click", () => {
+    if (questionPanel.hidden || choices.length !== currentIndex + 1) {
+        return;
+    }
+
+    currentIndex++;
+    if (currentIndex < questions.length) {
+        showQuestion();
+        return;
+    }
+
+    questionPanel.hidden = true;
+    const score = choices.filter((answer, index) => answer === questions[index].correct_answer).length;
+    scoreTitle.textContent = `Score : ${score} sur ${questions.length}`;
+    resultPanel.hidden = false;
+    scoreTitle.focus();
+});
+
+function showQuestion() {
+    const question = questions[currentIndex];
+    progress.textContent = `Question ${currentIndex + 1} sur ${questions.length}`;
     questionTitle.textContent = decodeText(question.question);
     answersList.replaceChildren();
+    next.hidden = true;
 
     const answers = [question.correct_answer, ...question.incorrect_answers];
     for (let i = answers.length - 1; i > 0; i--) {
@@ -45,10 +74,27 @@ function showQuestion(question, index, total) {
         const button = document.createElement("button");
         button.type = "button";
         button.textContent = decodeText(answer);
+        button.setAttribute("aria-pressed", "false");
+        button.addEventListener("click", () => chooseAnswer(answer, button));
         item.append(button);
         answersList.append(item);
     }
     questionPanel.hidden = false;
+    questionTitle.focus();
+}
+
+function chooseAnswer(answer, button) {
+    if (questionPanel.hidden || choices.length !== currentIndex) {
+        return;
+    }
+
+    choices.push(answer);
+    button.setAttribute("aria-pressed", "true");
+    for (const option of answersList.querySelectorAll("button")) {
+        option.disabled = true;
+    }
+    next.hidden = false;
+    next.focus();
 }
 
 function decodeText(text) {
