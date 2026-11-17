@@ -9,6 +9,8 @@ const answersList = document.querySelector("#answers");
 const next = document.querySelector("#next-question");
 const resultPanel = document.querySelector("#result-panel");
 const scoreTitle = document.querySelector("#score-title");
+const corrections = document.querySelector("#corrections");
+const replay = document.querySelector("#replay");
 let questions = [];
 let choices = [];
 let currentIndex = 0;
@@ -28,6 +30,7 @@ form.addEventListener("submit", async (event) => {
         questions = await fetchQuestions(category.value);
         choices = [];
         currentIndex = 0;
+        form.hidden = true;
         showQuestion();
         statusMessage.textContent = "";
     } catch {
@@ -49,11 +52,13 @@ next.addEventListener("click", () => {
         return;
     }
 
-    questionPanel.hidden = true;
-    const score = choices.filter((answer, index) => answer === questions[index].correct_answer).length;
-    scoreTitle.textContent = `Score : ${score} sur ${questions.length}`;
-    resultPanel.hidden = false;
-    scoreTitle.focus();
+    showResults();
+});
+
+replay.addEventListener("click", () => {
+    resultPanel.hidden = true;
+    form.hidden = false;
+    category.focus();
 });
 
 function showQuestion() {
@@ -62,6 +67,7 @@ function showQuestion() {
     questionTitle.textContent = decodeText(question.question);
     answersList.replaceChildren();
     next.hidden = true;
+    next.textContent = currentIndex === questions.length - 1 ? "Voir mon score" : "Suivant";
 
     const answers = [question.correct_answer, ...question.incorrect_answers];
     for (let i = answers.length - 1; i > 0; i--) {
@@ -95,6 +101,28 @@ function chooseAnswer(answer, button) {
     }
     next.hidden = false;
     next.focus();
+}
+
+function showResults() {
+    questionPanel.hidden = true;
+    const score = choices.filter((answer, index) => answer === questions[index].correct_answer).length;
+    scoreTitle.textContent = `Score : ${score} sur ${questions.length}`;
+    corrections.replaceChildren();
+
+    questions.forEach((question, index) => {
+        const item = document.createElement("li");
+        const title = document.createElement("strong");
+        const choice = document.createElement("div");
+        const correct = document.createElement("div");
+        title.textContent = decodeText(question.question);
+        choice.textContent = `Ta réponse : ${decodeText(choices[index])}`;
+        correct.textContent = `Bonne réponse : ${decodeText(question.correct_answer)}`;
+        item.append(title, choice, correct);
+        corrections.append(item);
+    });
+
+    resultPanel.hidden = false;
+    scoreTitle.focus();
 }
 
 function decodeText(text) {
