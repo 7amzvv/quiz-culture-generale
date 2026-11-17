@@ -14,6 +14,7 @@ const replay = document.querySelector("#replay");
 let questions = [];
 let choices = [];
 let currentIndex = 0;
+let selectedAnswer = null;
 
 class QuestionLoadError extends Error {}
 
@@ -46,10 +47,11 @@ form.addEventListener("submit", async (event) => {
 });
 
 next.addEventListener("click", () => {
-    if (questionPanel.hidden || choices.length !== currentIndex + 1) {
+    if (questionPanel.hidden || selectedAnswer === null) {
         return;
     }
 
+    choices.push(selectedAnswer);
     currentIndex++;
     if (currentIndex < questions.length) {
         showQuestion();
@@ -70,6 +72,7 @@ function showQuestion() {
     progress.textContent = `Question ${currentIndex + 1} sur ${questions.length}`;
     questionTitle.textContent = decodeText(question.question);
     answersList.replaceChildren();
+    selectedAnswer = null;
     next.hidden = true;
     next.textContent = currentIndex === questions.length - 1 ? "Voir mon score" : "Suivant";
 
@@ -94,17 +97,15 @@ function showQuestion() {
 }
 
 function chooseAnswer(answer, button) {
-    if (questionPanel.hidden || choices.length !== currentIndex) {
+    if (questionPanel.hidden) {
         return;
     }
 
-    choices.push(answer);
-    button.setAttribute("aria-pressed", "true");
+    selectedAnswer = answer;
     for (const option of answersList.querySelectorAll("button")) {
-        option.disabled = true;
+        option.setAttribute("aria-pressed", String(option === button));
     }
     next.hidden = false;
-    next.focus();
 }
 
 function showResults() {
