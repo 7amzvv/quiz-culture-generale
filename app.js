@@ -15,6 +15,8 @@ let questions = [];
 let choices = [];
 let currentIndex = 0;
 
+class QuestionLoadError extends Error {}
+
 form.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (start.disabled) {
@@ -33,8 +35,10 @@ form.addEventListener("submit", async (event) => {
         form.hidden = true;
         showQuestion();
         statusMessage.textContent = "";
-    } catch {
-        statusMessage.textContent = "Impossible de charger les questions. Réessaie dans un instant.";
+    } catch (error) {
+        statusMessage.textContent = error instanceof QuestionLoadError
+            ? error.message
+            : "Impossible de charger les questions. Réessaie dans un instant.";
     } finally {
         category.disabled = false;
         start.disabled = false;
@@ -134,12 +138,23 @@ function decodeText(text) {
 async function fetchQuestions(categoryId) {
     const url = new URL("https://opentdb.com/api.php");
     url.search = new URLSearchParams({ amount: "5", category: categoryId, type: "multiple" });
-    const response = await fetch(url);
+    const response = await fetch(url).catch(() => {
+        throw new QuestionLoadError("Connexion au service impossible. Vérifie ta connexion et réessaie.");
+    });
+    if (response.status === 429) {
+        throw new QuestionLoadError("Trop de demandes. Attends quelques secondes avant de réessayer.");
+    }
     if (!response.ok) {
-        throw new Error("Le service de quiz ne répond pas.");
+        throw new QuestionLoadError("Le service de quiz est indisponible. Réessaie dans un instant.");
     }
 
     const data = await response.json();
+    if (data.response_code === 1) {
+        throw new QuestionLoadError("Pas assez de questions pour cette catégorie. Essaies-en une autre.");
+    }
+    if (data.response_code === 5) {
+        throw new QuestionLoadError("Trop de demandes. Attends quelques secondes avant de réessayer.");
+    }
     if (data.response_code !== 0 || !Array.isArray(data.results) || data.results.length !== 5
         || !data.results.every(isMultipleChoiceQuestion)) {
         throw new Error("Le service n’a pas fourni cinq questions valides.");
