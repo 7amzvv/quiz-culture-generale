@@ -33,6 +33,11 @@ form {
     display: none;
 }
 
+.quiz-rules {
+    flex-basis: 100%;
+    margin: 0 0 0.5rem;
+}
+
 button,
 select {
     min-height: 2.75rem;
@@ -124,6 +129,16 @@ button:disabled {
 
 #corrections li + li {
     margin-top: 0.75rem;
+}
+
+footer {
+    margin-top: 2rem;
+    font-size: 0.875rem;
+    color: #4a584d;
+}
+
+footer a {
+    color: #315740;
 }
 
 @media (max-width: 30rem) {
