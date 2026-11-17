@@ -2,6 +2,10 @@ const form = document.querySelector("#quiz-form");
 const category = document.querySelector("#category");
 const start = form.querySelector("button");
 const statusMessage = document.querySelector("#quiz-status");
+const questionPanel = document.querySelector("#question-panel");
+const questionTitle = document.querySelector("#question-title");
+const progress = document.querySelector("#progress");
+const answersList = document.querySelector("#answers");
 
 form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -11,10 +15,12 @@ form.addEventListener("submit", async (event) => {
 
     start.disabled = true;
     category.disabled = true;
+    questionPanel.hidden = true;
     statusMessage.textContent = "Chargement des questions…";
     try {
         const questions = await fetchQuestions(category.value);
-        statusMessage.textContent = `${questions.length} questions chargées.`;
+        showQuestion(questions[0], 0, questions.length);
+        statusMessage.textContent = "";
     } catch {
         statusMessage.textContent = "Impossible de charger les questions. Réessaie dans un instant.";
     } finally {
@@ -22,6 +28,28 @@ form.addEventListener("submit", async (event) => {
         start.disabled = false;
     }
 });
+
+function showQuestion(question, index, total) {
+    progress.textContent = `Question ${index + 1} sur ${total}`;
+    questionTitle.textContent = question.question;
+    answersList.replaceChildren();
+
+    const answers = [question.correct_answer, ...question.incorrect_answers];
+    for (let i = answers.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [answers[i], answers[j]] = [answers[j], answers[i]];
+    }
+
+    for (const answer of answers) {
+        const item = document.createElement("li");
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = answer;
+        item.append(button);
+        answersList.append(item);
+    }
+    questionPanel.hidden = false;
+}
 
 async function fetchQuestions(categoryId) {
     const url = new URL("https://opentdb.com/api.php");
